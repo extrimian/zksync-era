@@ -10,11 +10,46 @@ RUN apt-get install -y curl gnupg libpq5 ca-certificates postgresql-client && rm
 
 # Install node and yarn
 ENV NODE_MAJOR=18
-RUN mkdir -p /etc/apt/keyrings && \
-    wget -c -O - https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
-    apt-get update && apt-get install nodejs -y && \
-    npm install -g yarn
+
+# Crear el directorio para las llaves de APT
+RUN mkdir -p /etc/apt/keyrings
+
+# Descargar la llave GPG de NodeSource y agregarla a las llaves confiables
+RUN wget -c -O - https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+
+# Agregar el repositorio de NodeSource a la lista de repositorios de APT
+RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+
+# Establecer la variable de entorno NVM_DIR
+ENV NVM_DIR /usr/local/nvm
+
+# Crear el directorio NVM_DIR
+RUN mkdir -p $NVM_DIR
+
+# Instalar nvm (Node Version Manager)
+ENV NODE_VERSION 18.0.0
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash \
+    && . $NVM_DIR/nvm.sh \
+    && nvm install $NODE_VERSION \
+    && nvm use $NODE_VERSION \
+    && nvm alias default $NODE_VERSION
+
+# Asegurarse de que node y npm estén disponibles en el PATH
+ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
+
+# Verificar la instalación de Node.js y npm
+RUN node --version
+RUN npm --version
+
+# Instalar Yarn usando npm
+RUN npm install -g yarn
+
+# Actualizar los paquetes e instalar Node.js y Yarn
+RUN apt-get update && apt-get install nodejs -y
+RUN node --version
+RUN npm --version
+
+RUN npm install -g yarn
 
 # Copy compiler (both solc and zksolc) binaries
 # Obtain `solc` 0.8.12.
